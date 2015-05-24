@@ -8,9 +8,9 @@ const byte PWM2 = 4;
 const byte TRIGGER_PIN = 8;
 const byte ECHO_PIN = 7;
 
-const int MAX_PWM = 120;
+const int MAX_PWM = 255;
 
-const unsigned int SP = 50;
+const unsigned int SP = 50; //50 cm.
 
 
 float Kp, Ki, Kd, minInt, maxInt;
@@ -58,16 +58,7 @@ int pidUpdate(float currentValue){
   //Derivada discreta
   dValue = Kd*(error - derivator);
   derivator = error; //Diferencia del valor anterior con el valor actual
-/*
-  Serial.print("\n\nError: ");
-  Serial.println(error);
-  Serial.println("P,  I,  D");
-  Serial.print(pValue);
-  Serial.print(", ");
-  Serial.print(iValue);
-  Serial.print(", ");
-  Serial.println(dValue);
-*/
+
   PID = pValue + iValue + dValue;
 
   if(PID > (MAX_PWM - 1)){
@@ -75,7 +66,6 @@ int pidUpdate(float currentValue){
   }else if(PID < ((-1)*MAX_PWM + 1)){
     PID = ((-1)*MAX_PWM + 1);
   }
-
   
   Serial.print("\n\nPID Value: ");
   Serial.println(PID);
@@ -98,8 +88,12 @@ void setup()
   Serial.begin(115200);
   
   
+  float P = -6;
+  float I = -0.5;
+  float D = -0.2;
+  
   //Extremadamente importante calibrar adecuadamente los coeficiente
-  pidInit(-8, -0.5, -1, (-1)*MAX_PWM, MAX_PWM); //Coeficientes y limites de integrador
+  pidInit(P, I, D, -MAX_PWM/(P*I), MAX_PWM/(P*I)); //Coeficientes y limites de integrador
   pidSetPoint(SP); //Posicion deseada
 }
 
@@ -109,12 +103,18 @@ uint16_t leePosicion(){
 
 void driveMotors(int pwm){
   if(pwm >=0){
+    if(pwm < MAX_PWM/5){ //Turn motors off if PWM is less than ´20%
+      pwm = 0;
+    }
     analogWrite(PWM1, pwm);
     digitalWrite(PWM2, 0);
     analogWrite(GREEN_LED, pwm);
     digitalWrite(RED_LED, 0);
   }else{
     pwm = 255 + pwm;
+    if((255 - pwm) < MAX_PWM/5){
+      pwm = 255;
+    }
     digitalWrite(PWM2, 1);
     analogWrite(PWM1, pwm);    
     digitalWrite(GREEN_LED, 0);
@@ -143,11 +143,7 @@ void loop()
                             //y obtener nuevo valor
 
   driveMotors(pwmOut);
-/*
-  Serial.println(" ");  
-  Serial.print("PIDval: ");
-  Serial.println(pwmOut);
-*/
+
   delay(5);
   
 }  
